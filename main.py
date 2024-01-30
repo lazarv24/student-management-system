@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (QApplication, QWidget, QGridLayout, QLineEdit,
                              QPushButton, QLabel, QMainWindow, QTableWidget,
                              QTableWidgetItem, QDialog, QVBoxLayout,
-                             QComboBox, QToolBar)
+                             QComboBox, QToolBar, QStatusBar)
 from PyQt6.QtGui import QAction, QIcon
 import sys
 import sqlite3
@@ -18,7 +18,8 @@ class MainWindow(QMainWindow):
         help_menu_item = self.menuBar().addMenu('&Help')
         edit_menu = self.menuBar().addMenu('&Edit')
 
-        add_student_action = QAction(QIcon('icons/add.png'), 'Add Student', self)
+        add_student_action = QAction(QIcon('icons/add.png'), 'Add Student',
+                                     self)
         add_student_action.triggered.connect(self.insert)
         file_menu_item.addAction(add_student_action)
 
@@ -29,6 +30,13 @@ class MainWindow(QMainWindow):
         search_action.triggered.connect(self.search)
         edit_menu.addAction(search_action)
 
+        self.table = QTableWidget()
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(
+            ('Id', 'Name', 'Course', 'Mobile'))
+        self.table.verticalHeader().setVisible(False)
+        self.setCentralWidget(self.table)
+
         # Create a toolbar and add toolbar elements
         toolbar = QToolBar()
         toolbar.setMovable(True)
@@ -37,12 +45,27 @@ class MainWindow(QMainWindow):
         toolbar.addAction(add_student_action)
         toolbar.addAction(search_action)
 
-        self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(
-            ('Id', 'Name', 'Course', 'Mobile'))
-        self.table.verticalHeader().setVisible(False)
-        self.setCentralWidget(self.table)
+        # Create status bar and add status bar elements
+        self.statusbar = QStatusBar()
+        self.setStatusBar(self.statusbar)
+
+        # Detect a cell click
+        self.table.cellClicked.connect(self.cell_clicked)
+
+    def cell_clicked(self):
+        edit_button = QPushButton('Edit record')
+        edit_button.clicked.connect(self.edit)
+
+        delete_button = QPushButton('Delete record')
+        delete_button.clicked.connect(self.delete)
+
+        children = self.findChildren(QPushButton)
+        if children:
+            for child in children:
+                self.statusbar.removeWidget(child)
+
+        self.statusbar.addWidget(edit_button)
+        self.statusbar.addWidget(delete_button)
 
     def load_data(self):
         connection = sqlite3.connect('database.db')
@@ -62,6 +85,22 @@ class MainWindow(QMainWindow):
     def search(self):
         dialog = Search()
         dialog.exec()
+
+    def edit(self):
+        edit_dialog = EditDialog()
+        edit_dialog.exec()
+
+    def delete(self):
+        delete_dialog = DeleteDialog()
+        delete_dialog.exec()
+
+
+class EditDialog(QDialog):
+    pass
+
+
+class DeleteDialog(QDialog):
+    pass
 
 
 class InsertDialog(QDialog):
@@ -138,7 +177,8 @@ class Search(QDialog):
         rows = list(result)
         print(rows)
 
-        items = main_window.table.findItems(name, Qt.MatchFlag.MatchFixedString)
+        items = main_window.table.findItems(name,
+                                            Qt.MatchFlag.MatchFixedString)
         for item in items:
             print(item)
             main_window.table.item(item.row(), 1).setSelected(True)
